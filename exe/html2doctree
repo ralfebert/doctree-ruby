@@ -1,0 +1,38 @@
+#!/usr/bin/env ruby
+
+require 'doctree'
+require 'nokogiri'
+require 'trollop'
+require 'pry'
+
+opts = Trollop::options do
+  version "html2doctree"
+  banner <<-EOS
+
+Converts HTML from STDIN to a doctree.
+
+Usage:
+       html2doctree [options]
+       
+EOS
+
+  opt :css, "A css selector to restrict content", type: String
+end
+
+html = Nokogiri::HTML(STDIN)
+
+tree = DocTree::DocTreeNode.forHTML(html)
+
+elements = if css = opts[:css] then elements = html.css(css) else [html] end
+
+raise "No elements found" if elements.count == 0
+
+elements.each do |element|
+  tree.map_html_tree(element) do |html|
+    if html.name == 'li' and link = html.css(">a").first
+      DocTree::DocTreeNode.forHTML(link)
+    end
+  end
+end
+
+puts tree.to_s
